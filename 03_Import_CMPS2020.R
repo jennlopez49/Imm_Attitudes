@@ -24,7 +24,7 @@ cmps.sub.2020  <- cmps2020 %>% dplyr::select(S1, S2_Racer2,S2_Race_Prime,
                                 Q629r1, Q627, Q628, Q629r5, Q629r7, Q709_712r1,
                                 Q709_712r2, Q709_712r3, Q713, Q715_718r1, 
                                 Q715_718r2, Q715_718r3, Q715_718r4, Q809, Q812,
-                                Q816, weight, splitQ716
+                                Q816, weight, splitQ716, Q29, Q813
 )
 
 
@@ -54,6 +54,16 @@ cmps2020.clean <- cmps.sub.2020 %>% mutate(
                     S7 ==  2 ~ 0,
                     S7 == 3 ~ 0.5), 
  Country_Origin = S10,
+ National_Origin = case_when(
+   S10 == 12 ~ "Mexican",
+   S10 == 6 ~ "Cuban",
+   S10 == 17 ~ "Puerto Rican",
+   S10 == 7 ~ "Dominican",
+   S10 %in% c(9, 10, 11, 5, 13, 14) ~ "Central American",
+   S10 %in% c(1, 2, 3, 4, 8, 15, 16, 18, 19, 20) ~ "South American",            # Brazil is included in 2020 CMPS
+   S10 == 21 ~ "Spanish",
+   TRUE ~ "Other"
+ ),
  Cuban = ifelse(cmps.sub.2020$S10 == 6, 1, 0),                                  # Cuban
  Mexican = ifelse(cmps.sub.2020$S10 == 12, 1, 0),                               # Mexican --- other S10_Mex doesn't 
  Education = S13,                                                               # Numeric - 1-7, 1 - Grade school (up to 8th) and 7 - Post-grad
@@ -256,14 +266,14 @@ cmps2020.clean <- cmps.sub.2020 %>% mutate(
                           Q713 == 2 ~ 3,
                           Q713 == 3 ~ 2,
                           Q713 == 4 ~ 1),    , 
- Belong_USSociety = case_when(Q715_718r1 == 1 ~ 3,                              # Believe they belong in US Society (recoded, 1 - not at all, 3 - a lot)
+ Belong_USSociety = case_when(Q715_718r1 == 1 ~ 1,                              # Believe they belong in US Society (1 - a lot, 3 - not at all)
                               Q715_718r1 == 2 ~ 2,
-                              Q715_718r1 == 3 ~ 1), 
+                              Q715_718r1 == 3 ~ 3), 
  InsOutsider_USSociety = Q715_718r2,
  Split_Terms_Ins = splitQ716,
- Outsider_USSociety = ifelse(cmps.sub.2020$splitQ716 == 1,                # Outsider in US Society (recoded, 1 (not at all) - 3 (a lot)), flipped the scale for those shown "outsider" (---> higher numbers, higher feelings of being excluded) 
+ Outsider_USSociety = ifelse(cmps.sub.2020$splitQ716 == 1,                      # Outsider in US Society (recoded, 1 (not at all) - 3 (a lot)), flipped the scale for those shown "outsider" (---> higher numbers, higher feelings of being excluded) 
                              cmps.sub.2020$Q715_718r2,
-                             5 - cmps.sub.2020$Q715_718r2),
+                             4 - cmps.sub.2020$Q715_718r2),
  Value_RespectYou = Q715_718r3,                                                 # how much do those in the US value and respect you? 1 - a lot, 3 - not at all.    
  Excluded_US = Q715_718r4,                                                      # how much do those in the US accept and include you? 1 - a lot, 3 - not at all.    
  Parents_Born = case_when(Q809 == 2 ~ 1,                                        # Recoded - 1 - both outside the US, 2 - 1/1, 3 - Both in PR, 4 - both in US, 88 - IDK
@@ -271,16 +281,128 @@ cmps2020.clean <- cmps.sub.2020 %>% mutate(
                           Q809 == 3 ~ 3,
                           Q809 == 1 ~ 4, 
                           Q809 == 88 ~ NA_real_),
- Grandparents_Born = case_when(Q812 == 5 ~ 1,                                        # Recoded - 1 - 4 outside the US, 2 - 3/1, 3 - 2/2, 4 - 1/3, 5 - all 4 in the US, 88 - NA
+ Grandparents_Born = case_when(Q812 == 5 ~ 1,                                   # Recoded - 1 - 4 outside the US, 2 - 3/1, 3 - 2/2, 4 - 1/3, 5 - all 4 in the US, 88 - NA
                                Q812 == 4 ~ 2,
                                Q812 == 3 ~ 3,
                                Q812 == 2 ~ 4, 
                                Q812 == 1 ~ 5,
                                Q812 == 88 ~ NA_real_),
- Spanish_Use = case_when(Q816 == 5 ~ 1,                                        # Recoded - 1 - never, 5 - very often 
+ Spanish_Use = case_when(Q816 == 5 ~ 1,                                         # Recoded - 1 - never, 5 - very often 
                          Q816 == 4 ~ 2,
                          Q816 == 3 ~ 3,
                          Q816 == 2 ~ 4, 
-                         Q816 == 1 ~ 5)
+                         Q816 == 1 ~ 5),
+ More_Than_SecondGen = case_when(Native == 0 ~ 0,                               # Immigrant respondent, first gen 
+                                 Native == 1 & Parents_Born < 3 ~ 1,            # At least one immigrant parent, second gen
+                                 Native == 1 & Parents_Born == 3 ~ 2,           # Both are born in the US, at least third gen
+                                 Parents_Born == 9 ~ NA_real_,                  ##### collapsing so any US-born with US-born Parents is marked as "above 2nd gen" and 1 is 2nd gen
+                                 is.na(Parents_Born) & Native == 1 ~ NA_real_),    
+ Pol_Interest = case_when(Q29 == 1 ~ 4,                                         # Reversed --> 1 - not at all 4 - very interested
+                          Q29 == 2 ~ 3, 
+                          Q29 == 3 ~ 2, 
+                          Q29 == 4 ~ 1),
+ Income = ifelse(Q813 == 99, NA_real_, Q813)
  )
+##### Discrimination Measure + Int/External Belong Measures ====================
+cmps2020.clean <- cmps2020.clean %>% mutate(
+  Internal_B = Belong_USSociety + Outsider_USSociety,
+  External_B = Value_RespectYou + Excluded_US,                                  # how they feel others treat them (value, respect, exclude) --> higher #s, more exclusion
+  Internal_Belonging = 4 - Internal_B,                                           # Recoding so higher #s --> higher belonging
+  External_Belonging = 4 - External_B
+)
 
+cmps2020.clean <- cmps2020.clean %>%
+  mutate(state_labels = as_factor(State), 
+         States = state.abb[match(state_labels, state.name)])
+cmps2020.clean$States <- ifelse(cmps2020.clean$state_labels == "District of Columbia", "DC", cmps2020.clean$States)
+#### Adding Pop + State Pol Characteristics ====================================
+data_president <- read_csv("/Users/jenniferlopez/Desktop/COIi work/Latino_Belonging/dataverse_files/1976-2020-president.csv")
+data_votes <- data_president %>% filter(year == 2020)
+
+data_2020_votes <- data_votes %>% filter(party_detailed == "REPUBLICAN" | 
+                                           party_detailed == "DEMOCRAT") %>% 
+  filter(year == 2020) %>% filter(writein == FALSE)
+
+data_2020_votes <- data_2020_votes %>%
+  dplyr::select(year, state, party_detailed, candidatevotes, totalvotes) %>%  # Keep relevant columns
+  pivot_wider(names_from = party_detailed, values_from = candidatevotes)
+
+data_2020_votes <- data_2020_votes %>% mutate(
+  vote_margin = ((REPUBLICAN - DEMOCRAT)/totalvotes)*100,
+  vote_pp_d = (DEMOCRAT/totalvotes)*100,
+  vote_pp_r = (REPUBLICAN/totalvotes)*100,
+  vote_diff_pp = vote_pp_d - vote_pp_r
+)
+
+votemargin_20 <- data_2020_votes %>% mutate(state = str_to_title(state),
+                                            State = state.abb[match(state, state.name)]) %>%
+  dplyr::select(State, vote_margin, REPUBLICAN, DEMOCRAT, totalvotes)
+
+# adding in latino pop data 
+latino.pop.data_20 <- read.csv("/Users/jenniferlopez/Desktop/COIi work/Latino_Belonging/latino_pop.csv")  %>% 
+  filter(NAME != "Puerto Rico") %>% 
+  mutate(State = NAME, State = state.abb[match(State, state.name)]) %>% 
+  dplyr::select(State, percent.latino.2020)
+
+latino.pop.data_20$State[is.na(latino.pop.data_20$State)] <- "DC"
+### adding in the 2016 pieces to the CMPS data ----------
+full_cmps2020 <- left_join(cmps2020.clean, latino.pop.data_20, by = c("States" = "State"))
+### adding vote margins ------
+full_cmps2020 <- left_join(full_cmps2020, votemargin_20, by = c("States" = "State"))
+
+full_cmps2020 <- full_cmps2020 %>% mutate(vote_margin = -vote_margin)
+
+full_cmps2020$Battleground <- ifelse(full_cmps2020$vote_margin > -6 & full_cmps2020$vote_margin < 6, 1, 0)
+
+
+
+
+#### Create Survey Design ======================================================
+
+latinos_data_20 <- full_cmps2020 %>% filter(S2_Racer2 == 1)
+
+cmps_lat_20 <- svydesign(
+  ids = ~1, 
+  data = latinos_data_20, 
+  weights = ~weight
+)
+
+# Checking proporitions 
+prop.table(svytable(~National_Origin, cmps_lat_20))
+
+##Checking against 2020 ACS by Specific Origin -- total pop is total Latino pop -- 59,361,020
+total_pop_2020 <- 59361020
+
+national_origin_acs_2020 <- data.frame(National_Origin = c("Central American", "Cuban", "Dominican", "Mexican",
+                                                   "Other", "Puerto Rican", "South American", "Spanish"),
+                                       Pop = c(5497573, 2332584, 2042360, 36537028, 1942951, 5699150,3819508, 1489866)
+)
+national_origin_acs_2020$ACS_Prop <- national_origin_acs_2020$Pop / total_pop_2020
+
+# Get CMPS sample proportions
+cmps_props <- as.data.frame(prop.table(svytable(~National_Origin, cmps_lat_20)))
+colnames(cmps_props) <- c("National_Origin", "Sample_Prop")
+
+# Merge ACS and CMPS proportions
+post_strat_weights <- merge(national_origin_acs_2020, cmps_props, by = "National_Origin")
+
+# Compute post-stratification weight (ACS proportion divided by sample proportion)
+post_strat_weights$Post_Weight <- post_strat_weights$ACS_Prop / post_strat_weights$Sample_Prop
+
+# Joining post-stratification weights back to original data
+latinos_data_20 <- latinos_data_20 %>%
+  left_join(post_strat_weights %>% select(National_Origin, Post_Weight), by = "National_Origin") %>%
+  mutate(weight_adj = weight * Post_Weight)
+
+# New survey design object with adjusted weights
+cmps_lat_20_adj <- svydesign(
+  ids = ~1,
+  data = latinos_data_20,
+  weights = ~weight_adj
+)
+
+# double check new weighted proportions
+prop.table(svytable(~National_Origin, cmps_lat_20_adj))
+
+# View the post-stratification adjustment table if needed
+head(post_strat_weights)
