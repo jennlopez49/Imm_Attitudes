@@ -26,7 +26,7 @@ mediation_function_standard <- function(dvs, ivs, mediators, controls, des,
   mediator_models <- list()
   for (M in mediators) {  
     for (X in ivs) {  
-      form_mediator <- as.formula(paste(M, " ~ ", X, "+ Linked_Fate +", paste(controls, collapse = " + ")))
+      form_mediator <- as.formula(paste(M, " ~ ", X, "+", paste(controls, collapse = " + ")))
       mediator_model <- svyglm(form_mediator, design = des, family = gaussian(),
                                data = dat_std)
       
@@ -39,7 +39,7 @@ mediation_function_standard <- function(dvs, ivs, mediators, controls, des,
   for (Y in dvs) {  
     for (M in mediators) {  
       for (X in ivs) {  
-        form_outcome <- as.formula(paste(Y, " ~ ", X, "+", M, "+ Linked_Fate +", paste(controls, collapse = " + ")))
+        form_outcome <- as.formula(paste(Y, " ~ ", X, "+", M, "+", paste(controls, collapse = " + ")))
         outcome_model <- svyglm(form_outcome, design = des, family = gaussian(),
                                 data = dat_std)
         
